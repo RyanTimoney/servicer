@@ -33,16 +33,6 @@ class Service(BaseService):
         for step in steps:
             getattr(self, step['type'])(**step.get('args', {}))
     
-    def print_dict(dictionary, ident = '', braces=1):
-        """ Recursively prints nested dictionaries."""
-
-        for key, value in dictionary.iteritems():
-            if isinstance(value, dict):
-                print('%s%s%s%s' %(ident, braces*'[', key, braces*']'))
-                print_dict(value, ident+'  ', braces+1)
-            else:
-                print(ident + '%s = %s' %(key, value))
-
     def set_auto_version(self, max_increment=10, auto_detect_version=True):
         self.logger.log('auto-versioning (auto_detect_version=%s)...' % auto_detect_version)
 
@@ -152,12 +142,12 @@ class Service(BaseService):
         version_list_method = getattr(self, version_list_method_name)
         version_list = version_list_method(**package_info)
 
-        return version_list
+        return version_listdef
 
     def get_existing_gcr_versions(self, **package_info):
         print('getting existing gcr versions...')
         docker_image = package_info['docker_image_path']
-        # BREAKING CHANGE
+        # Removing this is a BREAKING CHANGE
         #if 'name' in package_info:
         #    docker_image = '%s/%s' % (docker_image, package_info['name'])
 
