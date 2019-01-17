@@ -18,8 +18,6 @@ class Service(BaseService):
 
         if 'package_file_path' in self.config['package_info'] and 'version_file_path' not in self.config['package_info']:
              self.config['package_info']['version_file_path'] = self.config['package_info']['package_file_path']
-        
-        self.default_version_source = 'pip'
 
     def up(self):
         super().up()

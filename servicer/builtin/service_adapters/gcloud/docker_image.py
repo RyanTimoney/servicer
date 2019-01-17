@@ -5,7 +5,7 @@ class Service(DockerImageService):
         super().__init__(config, logger=logger)
 
         self.registry = 'us.gcr.io'
-        self.default_version_source = 'gcr'
+        self.version_source = 'gcr'
 
     def prune_images(self, older_than='', n_to_keep=0):
         full_path = self.full_image_path(self.config['registry_path'])
