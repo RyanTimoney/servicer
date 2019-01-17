@@ -18,6 +18,8 @@ class Service(BaseService):
 
         if 'package_file_path' in self.config['package_info'] and 'version_file_path' not in self.config['package_info']:
              self.config['package_info']['version_file_path'] = self.config['package_info']['package_file_path']
+        
+        self.default_version_source = 'pip'
 
     def up(self):
         super().up()
@@ -134,15 +136,29 @@ class Service(BaseService):
         return package_info['version_exists']
 
     def get_existing_versions(self, **package_info):
-        if 'version_source' in self.config:
-            raise NameError('Service must provide version_source.')
+        print('getting existing versions...')
+        if 'version_source' not in package_info:
+            package_info['version_source'] = self.default_version_source
+            self.logger.log('WARNING: No version_source specified. version_source is defaulting to %s.' % self.default_version_source)
+        print('version_source is: %s' % package_info['version_source'])
 
         version_list_method_name = "get_existing_%s_versions" % package_info['version_source']
         print('version_list_method_name is: %s' % version_list_method_name)
         version_list_method = getattr(self, version_list_method_name)
         version_list = version_list_method(**package_info)
 
-        return version_listdef
+        return version_list
+
+    def get_existing_pip_versions(self, **package_info):
+        result = self.pip('install %s==' % package_info['name'])
+        regex = re.compile('\(from versions: (.*)\)')
+        match = regex.search(result['stdout'])
+
+        versions = []
+        if match:
+            versions.extend(match.group(1).split(', '))
+
+        return versions
 
     def get_existing_gcr_versions(self, **package_info):
         print('getting existing gcr versions...')
@@ -159,12 +175,36 @@ class Service(BaseService):
 
         return list(tags)
 
+    def get_existing_scala_artifactory_versions(self, **package_info):
+        import requests
+        from requests.auth import HTTPBasicAuth
+
+        minor_scala_version = '.'.join(package_info['scala_version'].split('.')[0:-1])
+        package_path = '%s/%s_%s' % (package_info['organization'], package_info['name'], minor_scala_version)
+        url = '%s/api/storage/%s/%s' % (os.environ['ARTIFACTORY_ENDPOINT'], package_info['repository'], package_path)
+
+        response = requests.get(
+            url,
+            auth=HTTPBasicAuth(os.environ['ARTIFACTORY_USERNAME'], os.environ['ARTIFACTORY_PASSWORD']),
+        )
+
+        versions = []
+        if response.status_code == 404:
+            self.logger.log('WARNING: repository path not found: %s' % url, level='warn')
+        else:
+            response.raise_for_status()
+
+            body = response.json()
+            versions.extend([child['uri'][1:] for child in body['children'] if child['folder']])
+
+        return versions
+
     def read_package_info(self, package_info={}):
         self.package_info = package_info
 
         if 'name' not in self.package_info:
             self.package_info['name'] = self.package_name(self.config['package_info']['package_file_path'])
-
+        
         try:
             self.package_version_format
         except AttributeError:

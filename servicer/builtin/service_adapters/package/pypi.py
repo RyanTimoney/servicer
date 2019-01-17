@@ -7,12 +7,14 @@ from .base_package import Service as BasePackageService
 class Service(BasePackageService):
     def __init__(self, config=None, logger=None):
         super().__init__(config=config, logger=logger)
+        
         self.pypirc_path = os.getenv('PYPIRC_PATH', '%s/.pypirc' % os.environ['HOME'])
         self.pip_conf_path = os.getenv('PIP_CONF_PATH', '%s/.pip/pip.conf' % os.environ['HOME'])
 
         self.name_regex = re.compile('name\s*=\s*[\'\"]+(.*?)[\'\"]+')
         self.version_regex = re.compile('version\s*=\s*[\'\"]+(\d+\.\d+\.\d+)[\'\"]+')
         self.package_version_format = 'version=\'%s\''
+        self.default_version_source = 'pip'
 
     def setup_py(self, command):
         self.run('%s setup.py %s' % (os.getenv('PYTHON_EXE', 'python'), command))
@@ -127,17 +129,6 @@ class Service(BasePackageService):
             if action == 'error':
                 self.logger.log(existing_packages)
                 raise ValueError('Package already exists! %s-%s' % (package_name, version))
-
-    def get_existing_versions(self, **package_info):
-        result = self.pip('install %s==' % package_info['name'])
-        regex = re.compile('\(from versions: (.*)\)')
-        match = regex.search(result['stdout'])
-
-        versions = []
-        if match:
-            versions.extend(match.group(1).split(', '))
-
-        return versions
 
     def pip(self, command, hide_output=True):
         result = self.run('PIP_CONFIG_FILE=%s %s %s' % (self.pip_conf_path, os.getenv('PIP_EXE', 'pip'), command), check=False, hide_output=hide_output)
